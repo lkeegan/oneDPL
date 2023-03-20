@@ -32,6 +32,10 @@ namespace __internal
 template <typename T, typename Allocator, typename IsConst = ::std::false_type>
 struct sycl_iterator_trait
 {
+    using value_type = T;
+    using pointer    = T*;
+    using reference  = T&;
+
     using is_hetero = ::std::true_type;
     using is_hetero_const = ::std::false_type;
 
@@ -42,10 +46,14 @@ struct sycl_iterator_trait
 template <typename T, typename Allocator>
 struct sycl_iterator_trait<T, Allocator, ::std::true_type>
 {
+    using value_type = const T;
+    using pointer    = const T*;
+    using reference  = const T&;
+
     using is_hetero = ::std::true_type;
     using is_hetero_const = ::std::true_type;
 
-    using Buffer = sycl::buffer<T, 1, Allocator>;
+    using Buffer = sycl::buffer<const T, 1, Allocator>;
     using BufferReturnType = const Buffer;
 };
 
@@ -63,9 +71,10 @@ struct sycl_iterator_impl
     using is_hetero_const = typename sycl_iterator_trait<T, Allocator, IsConst>::is_hetero_const;
     using difference_type = ::std::make_signed<Size>::type;
 
-    using value_type = T;
-    using pointer = T*;
-    using reference = T&;
+    using value_type = typename sycl_iterator_trait<T, Allocator, IsConst>::value_type;
+    using pointer    = typename sycl_iterator_trait<T, Allocator, IsConst>::pointer;
+    using reference  = typename sycl_iterator_trait<T, Allocator, IsConst>::reference;
+
     using Buffer = typename sycl_iterator_trait<T, Allocator, IsConst>::Buffer;
     using BufferReturnType = typename sycl_iterator_trait<T, Allocator, IsConst>::BufferReturnType;
 
