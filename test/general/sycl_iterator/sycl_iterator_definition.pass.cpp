@@ -41,6 +41,9 @@ main()
     auto const_it = oneapi::dpl::cbegin(buf);
     auto it = oneapi::dpl::begin(buf);
 
+    const auto diff1 = const_it - const_it;
+    const auto diff2 = it - it;
+
     EXPECT_TRUE(const_it == it, "Wrong compare result of oneapi::dpl::cbegin(buf) and oneapi::dpl::begin(buf)");
     EXPECT_TRUE(it == const_it, "Wrong compare result of oneapi::dpl::begin(buf) and oneapi::dpl::cbegin(buf)");
 
