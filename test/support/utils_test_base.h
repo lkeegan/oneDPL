@@ -377,18 +377,14 @@ protected:
 };
 
 template <typename Iterator>
-constexpr bool
-is_reverse_it(::std::reverse_iterator<Iterator>)
+struct is_reverse_it : ::std::false_type
 {
-    return true;
-}
+};
 
 template <typename Iterator>
-constexpr bool
-is_reverse_it(Iterator)
+struct is_reverse_it<::std::reverse_iterator<Iterator>> : ::std::true_type
 {
-    return false;
-}
+};
 
 template <typename T>
 struct is_const_reference : ::std::false_type
@@ -402,7 +398,7 @@ struct is_const_reference<T const&> : ::std::true_type
 
 template <typename Iterator>
 constexpr bool
-is_const_it(Iterator)
+is_const_it()
 {
     using ValueRef = typename ::std::iterator_traits<Iterator>::reference;
     return is_const_reference<ValueRef>::value;
@@ -413,13 +409,13 @@ auto
 get_non_const_it(HostData& host_data, Iterator first, Size n)
 {
     // If the source iterator is non-const then return it
-    if constexpr (!is_const_it(Iterator{}))
+    if constexpr (!is_const_it<Iterator>())
     {
         return first;
     }
 
     // If the source iterator is not reverse (and it is const) return iterator for the source data
-    else if constexpr (!is_reverse_it(Iterator{}))
+    else if constexpr (!is_reverse_it<Iterator>())
     {
         return host_data.begin();
     }
