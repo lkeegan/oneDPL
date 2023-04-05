@@ -72,7 +72,7 @@ struct __parallel_transform_reduce_seq_submitter<_Tp, __internal::__optional_ker
             __cgh.single_task<_Name...>([=] {
                 _Tp __result = __transform_pattern(__n, __rngs...);
                 __reduce_pattern.apply_init(__init, __result);
-                __res[0] = __result;
+                *__res = __result;
             });
         });
 
@@ -139,7 +139,7 @@ struct __parallel_transform_reduce_small_submitter<__work_group_size, __iters_pe
                     if (__local_idx == 0)
                     {
                         __reduce_pattern.apply_init(__init, __result);
-                        __res[0] = __result;
+                        *__res = __result;
                     }
                 });
         });
@@ -268,7 +268,7 @@ struct __parallel_transform_reduce_impl
                             if (__n_groups == 1)
                             {
                                 __reduce_op.apply_init(__init, __result);
-                                __res[0] = __result;
+                                *__res = __result;
                             }
 
                             __temp_acc[__offset_1 + __item_id.get_group(0)] = __result;
