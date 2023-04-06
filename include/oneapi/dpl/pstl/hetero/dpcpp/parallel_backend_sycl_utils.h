@@ -20,7 +20,6 @@
 #include <memory>
 #include <type_traits>
 #include <tuple>
-#include <functional>
 
 #include "../../iterator_impl.h"
 
@@ -581,15 +580,27 @@ class __reduce_future
 {
     _ExecutionPolicy __my_exec;
     _Event __my_event;
-    using ResPointer = ::std::unique_ptr<_Res, ::std::function<void(_Res*)>>;
+
+    struct ResDeleter
+    {
+        sycl::queue __queue;
+        ResDeleter(sycl::queue __q) : __queue(::std::move(__q)) {}
+
+        void
+        operator()(_Res* __res)
+        {
+            ::sycl::free(__res, __queue);
+        }
+    };
+
+    using ResPointer = ::std::unique_ptr<_Res, ResDeleter>;
     ResPointer __my_res;
 
   public:
     __reduce_future(_ExecutionPolicy&& __exec, _Event&& __e, _Res* __res)
-        : __my_exec(::std::forward<_ExecutionPolicy>(__exec)), __my_event(::std::forward<_Event>(__e))
+        : __my_exec(::std::forward<_ExecutionPolicy>(__exec)), __my_event(::std::forward<_Event>(__e)),
+          __my_res(__res, __my_exec.queue())
     {
-        auto queue = __my_exec.queue();
-        __my_res = ResPointer(__res, [queue](_Res* __res) { ::sycl::free(__res, queue); });
     }
 
     auto
