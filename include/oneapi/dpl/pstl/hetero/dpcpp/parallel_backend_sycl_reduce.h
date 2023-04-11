@@ -47,6 +47,15 @@ class __reduce_kernel;
 // Please see the comment for __parallel_for_submitter for optional kernel name explanation
 //------------------------------------------------------------------------
 
+template <typename Type>
+struct DeleteOnDestroy
+{
+    Type* __ptr = nullptr;
+
+    DeleteOnDestroy(Type* _ptr) : __ptr(_ptr) {}
+    ~DeleteOnDestroy() { delete __ptr; }
+};
+
 // Sequential parallel_transform_reduce used for small input sizes
 template <typename _Tp, typename _KernelName>
 struct __parallel_transform_reduce_seq_submitter;
@@ -77,6 +86,7 @@ struct __parallel_transform_reduce_seq_submitter<_Tp, __internal::__optional_ker
             acc_type* __res_acc = nullptr;
             if (__res_buf)
                 __res_acc = new acc_type(__res_buf->template get_access<access_mode::write>(__cgh));
+            DeleteOnDestroy __res_acc_auto_deleter(__res_acc);
             __cgh.single_task<_Name...>([=] {
                 _Tp __result = __transform_pattern(__n, __rngs...);
                 __reduce_pattern.apply_init(__init, __result);
@@ -85,8 +95,6 @@ struct __parallel_transform_reduce_seq_submitter<_Tp, __internal::__optional_ker
                     else
                         (*__res_acc)[0] = __result;
             });
-
-            delete __res_acc;
         });
 
         return __reduce_future<_ExecutionPolicy, sycl::event, _Tp>(::std::forward<_ExecutionPolicy>(__exec),
@@ -146,6 +154,7 @@ struct __parallel_transform_reduce_small_submitter<__work_group_size, __iters_pe
             acc_type* __res_acc = nullptr;
             if (__res_buf)
                 __res_acc = new acc_type(__res_buf->template get_access<access_mode::write>(__cgh));
+            DeleteOnDestroy __res_acc_auto_deleter(__res_acc);
             __dpl_sycl::__local_accessor<_Tp> __temp_local(sycl::range<1>(__work_group_size), __cgh);
             __cgh.parallel_for<_Name...>(
                 sycl::nd_range<1>(sycl::range<1>(__work_group_size), sycl::range<1>(__work_group_size)),
@@ -167,8 +176,6 @@ struct __parallel_transform_reduce_small_submitter<__work_group_size, __iters_pe
                             (*__res_acc)[0] = __result;
                     }
                 });
-
-            delete __res_acc;
         });
 
         return __reduce_future<_ExecutionPolicy, sycl::event, _Tp>(::std::forward<_ExecutionPolicy>(__exec),
@@ -272,6 +279,7 @@ struct __parallel_transform_reduce_impl
                 acc_type* __res_acc = nullptr;
                 if (__res_buf)
                     __res_acc = new acc_type(__res_buf->template get_access<access_mode::write>(__cgh));
+                DeleteOnDestroy __res_acc_auto_deleter(__res_acc);
                 __dpl_sycl::__local_accessor<_Tp> __temp_local(sycl::range<1>(__work_group_size), __cgh);
 #if _ONEDPL_COMPILE_KERNEL && _ONEDPL_KERNEL_BUNDLE_PRESENT
                 __cgh.use_kernel_bundle(__kernel.get_kernel_bundle());
@@ -314,8 +322,6 @@ struct __parallel_transform_reduce_impl
                             __temp_acc[__offset_1 + __item_id.get_group(0)] = __result;
                         }
                     });
-
-                    delete __res_acc;
             });
             if (__is_first)
                 __is_first = false;
