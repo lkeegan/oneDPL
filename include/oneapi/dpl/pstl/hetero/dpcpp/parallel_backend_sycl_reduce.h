@@ -56,6 +56,9 @@ struct DeleteOnDestroy
     ~DeleteOnDestroy() { delete __ptr; }
 };
 
+template <typename T>
+using SyclBufferUniqPtr = ::std::unique_ptr<sycl::buffer<T>>;
+
 // Sequential parallel_transform_reduce used for small input sizes
 template <typename _Tp, typename _KernelName>
 struct __parallel_transform_reduce_seq_submitter;
@@ -75,7 +78,7 @@ struct __parallel_transform_reduce_seq_submitter<_Tp, __internal::__optional_ker
         auto __reduce_pattern = unseq_backend::reduce_over_group<_ExecutionPolicy, _ReduceOp, _Tp>{__reduce_op};
 
         const bool __has_usm_host_allocations = has_usm_host_allocations(__exec.queue());
-        ::std::unique_ptr<sycl::buffer<_Tp>> __res_buf;
+        SyclBufferUniqPtr<_Tp> __res_buf;
         if (!__has_usm_host_allocations)
             __res_buf = ::std::make_unique<sycl::buffer<_Tp>>(sycl::range<1>(1));
         _Tp* __res_host_ptr = __has_usm_host_allocations ? sycl::malloc_host<_Tp>(1, __exec.queue()) : nullptr;
@@ -143,7 +146,7 @@ struct __parallel_transform_reduce_small_submitter<__work_group_size, __iters_pe
         const _Size __n_items = oneapi::dpl::__internal::__dpl_ceiling_div(__n, __iters_per_work_item);
 
         const bool __has_usm_host_allocations = has_usm_host_allocations(__exec.queue());
-        ::std::unique_ptr<sycl::buffer<_Tp>> __res_buf;
+        SyclBufferUniqPtr<_Tp> __res_buf;
         if (!__has_usm_host_allocations)
             __res_buf = ::std::make_unique<sycl::buffer<_Tp>>(sycl::range<1>(1));
         _Tp* __res_host_ptr = __has_usm_host_allocations ? sycl::malloc_host<_Tp>(1, __exec.queue()) : nullptr;
@@ -261,7 +264,7 @@ struct __parallel_transform_reduce_impl
         _Size __offset_2 = __n_groups;
 
         const bool __has_usm_host_allocations = has_usm_host_allocations(__exec.queue());
-        ::std::unique_ptr<sycl::buffer<_Tp>> __res_buf;
+        SyclBufferUniqPtr<_Tp> __res_buf;
         if (!__has_usm_host_allocations)
             __res_buf = ::std::make_unique<sycl::buffer<_Tp>>(sycl::range<1>(1));
         _Tp* __res_host_ptr = __has_usm_host_allocations ? sycl::malloc_host<_Tp>(1, __exec.queue()) : nullptr;
