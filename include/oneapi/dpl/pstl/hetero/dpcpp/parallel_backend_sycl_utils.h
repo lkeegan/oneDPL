@@ -574,6 +574,12 @@ class __future : private std::tuple<_Args...>
     }
 };
 
+inline bool
+has_usm_host_allocations(sycl::queue __queue)
+{
+    return __queue.get_device().has(sycl::aspect::usm_host_allocations);
+}
+
 // A contract for a future class for reduce: <execution policy, sycl::event, USM host memory for the reduced value>
 template <typename _ExecutionPolicy, typename _Event, typename _Res>
 class __reduce_future
@@ -593,13 +599,15 @@ class __reduce_future
         }
     };
 
+    sycl::buffer<_Res> __res_buf;
+
     using ResPointer = ::std::unique_ptr<_Res, ResDeleter>;
-    ResPointer __my_res;
+    ResPointer __res_ptr;
 
   public:
-    __reduce_future(_ExecutionPolicy&& __exec, _Event&& __e, _Res* __res)
+    __reduce_future(_ExecutionPolicy&& __exec, _Event&& __e, sycl::buffer<_Res>&& __buf, _Res* __res)
         : __my_exec(::std::forward<_ExecutionPolicy>(__exec)), __my_event(::std::forward<_Event>(__e)),
-          __my_res(__res, __my_exec.queue())
+          __res_buf(::std::move(__buf)), __res_ptr(__res, __my_exec.queue())
     {
     }
 
@@ -621,7 +629,15 @@ class __reduce_future
     get()
     {
         __my_event.wait_and_throw();
-        return *__my_res.get();
+        if (!__res_ptr)
+        {
+            //according to a contract, returned value is one-element sycl::buffer
+            return __res_buf.get_host_access(sycl::read_only)[0];
+        }
+        else
+        {
+            return *__res_ptr.get();
+        }
     }
 };
 
