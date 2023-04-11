@@ -66,24 +66,32 @@ struct __parallel_transform_reduce_seq_submitter<_Tp, __internal::__optional_ker
         auto __reduce_pattern = unseq_backend::reduce_over_group<_ExecutionPolicy, _ReduceOp, _Tp>{__reduce_op};
 
         const bool __has_usm_host_allocations = has_usm_host_allocations(__exec.queue());
-        sycl::buffer<_Tp> __res_buf(sycl::range<1>(1));
+        ::std::unique_ptr<sycl::buffer<_Tp>> __res_buf;
+        if (!__has_usm_host_allocations)
+            __res_buf = ::std::make_unique<sycl::buffer<_Tp>>(sycl::range<1>(1));
         _Tp* __res_host_ptr = __has_usm_host_allocations ? sycl::malloc_host<_Tp>(1, __exec.queue()) : nullptr;
 
         sycl::event __reduce_event = __exec.queue().submit([&, __n](sycl::handler& __cgh) {
             oneapi::dpl::__ranges::__require_access(__cgh, __rngs...); // get an access to data under SYCL buffer
-            auto __res_acc = __res_buf.template get_access<access_mode::write>(__cgh);
+            using acc_type = decltype(__res_buf->template get_access<access_mode::write>(__cgh));
+            acc_type* __res_acc = nullptr;
+            if (__res_buf)
+                __res_acc = new acc_type(__res_buf->template get_access<access_mode::write>(__cgh));
             __cgh.single_task<_Name...>([=] {
                 _Tp __result = __transform_pattern(__n, __rngs...);
                 __reduce_pattern.apply_init(__init, __result);
-                if (!__has_usm_host_allocations)
-                    __res_acc[0] = __result;
-                else
-                    *__res_host_ptr = __result;
+                    if (__has_usm_host_allocations)
+                        *__res_host_ptr = __result;
+                    else
+                        (*__res_acc)[0] = __result;
             });
+
+            delete __res_acc;
         });
 
-        return __reduce_future<_ExecutionPolicy, sycl::event, _Tp>(
-            ::std::forward<_ExecutionPolicy>(__exec), ::std::move(__reduce_event), std::move(__res_buf), __res_host_ptr);
+        return __reduce_future<_ExecutionPolicy, sycl::event, _Tp>(::std::forward<_ExecutionPolicy>(__exec),
+                                                                   ::std::move(__reduce_event), std::move(__res_buf),
+                                                                   __res_host_ptr);
     }
 };
 
@@ -127,12 +135,17 @@ struct __parallel_transform_reduce_small_submitter<__work_group_size, __iters_pe
         const _Size __n_items = oneapi::dpl::__internal::__dpl_ceiling_div(__n, __iters_per_work_item);
 
         const bool __has_usm_host_allocations = has_usm_host_allocations(__exec.queue());
-        sycl::buffer<_Tp> __res_buf(sycl::range<1>(1));
+        ::std::unique_ptr<sycl::buffer<_Tp>> __res_buf;
+        if (!__has_usm_host_allocations)
+            __res_buf = ::std::make_unique<sycl::buffer<_Tp>>(sycl::range<1>(1));
         _Tp* __res_host_ptr = __has_usm_host_allocations ? sycl::malloc_host<_Tp>(1, __exec.queue()) : nullptr;
 
         sycl::event __reduce_event = __exec.queue().submit([&, __n, __n_items](sycl::handler& __cgh) {
             oneapi::dpl::__ranges::__require_access(__cgh, __rngs...); // get an access to data under SYCL buffer
-            auto __res_acc = __res_buf.template get_access<access_mode::write>(__cgh);
+            using acc_type = decltype(__res_buf->template get_access<access_mode::write>(__cgh));
+            acc_type* __res_acc = nullptr;
+            if (__res_buf)
+                __res_acc = new acc_type(__res_buf->template get_access<access_mode::write>(__cgh));
             __dpl_sycl::__local_accessor<_Tp> __temp_local(sycl::range<1>(__work_group_size), __cgh);
             __cgh.parallel_for<_Name...>(
                 sycl::nd_range<1>(sycl::range<1>(__work_group_size), sycl::range<1>(__work_group_size)),
@@ -151,9 +164,11 @@ struct __parallel_transform_reduce_small_submitter<__work_group_size, __iters_pe
                         if (__has_usm_host_allocations)
                             *__res_host_ptr = __result;
                         else
-                            __res_acc[0] = __result;
+                            (*__res_acc)[0] = __result;
                     }
                 });
+
+            delete __res_acc;
         });
 
         return __reduce_future<_ExecutionPolicy, sycl::event, _Tp>(::std::forward<_ExecutionPolicy>(__exec),
@@ -239,7 +254,9 @@ struct __parallel_transform_reduce_impl
         _Size __offset_2 = __n_groups;
 
         const bool __has_usm_host_allocations = has_usm_host_allocations(__exec.queue());
-        sycl::buffer<_Tp> __res_buf(sycl::range<1>(1));
+        ::std::unique_ptr<sycl::buffer<_Tp>> __res_buf;
+        if (!__has_usm_host_allocations)
+            __res_buf = ::std::make_unique<sycl::buffer<_Tp>>(sycl::range<1>(1));
         _Tp* __res_host_ptr = __has_usm_host_allocations ? sycl::malloc_host<_Tp>(1, __exec.queue()) : nullptr;
 
         sycl::event __reduce_event;
@@ -251,7 +268,10 @@ struct __parallel_transform_reduce_impl
 
                 oneapi::dpl::__ranges::__require_access(__cgh, __rngs...); // get an access to data under SYCL buffer
                 auto __temp_acc = __temp.template get_access<access_mode::read_write>(__cgh);
-                auto __res_acc = __res_buf.template get_access<access_mode::write>(__cgh);
+                using acc_type = decltype(__res_buf->template get_access<access_mode::write>(__cgh));
+                acc_type* __res_acc = nullptr;
+                if (__res_buf)
+                    __res_acc = new acc_type(__res_buf->template get_access<access_mode::write>(__cgh));
                 __dpl_sycl::__local_accessor<_Tp> __temp_local(sycl::range<1>(__work_group_size), __cgh);
 #if _ONEDPL_COMPILE_KERNEL && _ONEDPL_KERNEL_BUNDLE_PRESENT
                 __cgh.use_kernel_bundle(__kernel.get_kernel_bundle());
@@ -288,12 +308,14 @@ struct __parallel_transform_reduce_impl
                                 if (__has_usm_host_allocations)
                                     *__res_host_ptr = __result;
                                 else
-                                    __res_acc[0] = __result;
+                                    (*__res_acc)[0] = __result;
                             }
 
                             __temp_acc[__offset_1 + __item_id.get_group(0)] = __result;
                         }
                     });
+
+                    delete __res_acc;
             });
             if (__is_first)
                 __is_first = false;

@@ -599,13 +599,13 @@ class __reduce_future
         }
     };
 
-    sycl::buffer<_Res> __res_buf;
+    ::std::unique_ptr<sycl::buffer<_Res>> __res_buf;
 
     using ResPointer = ::std::unique_ptr<_Res, ResDeleter>;
     ResPointer __res_ptr;
 
   public:
-    __reduce_future(_ExecutionPolicy&& __exec, _Event&& __e, sycl::buffer<_Res>&& __buf, _Res* __res)
+    __reduce_future(_ExecutionPolicy&& __exec, _Event&& __e, ::std::unique_ptr<sycl::buffer<_Res>>&& __buf, _Res* __res)
         : __my_exec(::std::forward<_ExecutionPolicy>(__exec)), __my_event(::std::forward<_Event>(__e)),
           __res_buf(::std::move(__buf)), __res_ptr(__res, __my_exec.queue())
     {
@@ -632,7 +632,7 @@ class __reduce_future
         if (!__res_ptr)
         {
             //according to a contract, returned value is one-element sycl::buffer
-            return __res_buf.get_host_access(sycl::read_only)[0];
+            return __res_buf->get_host_access(sycl::read_only)[0];
         }
         else
         {
