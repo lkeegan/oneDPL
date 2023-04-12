@@ -42,14 +42,35 @@ class __reduce_small_kernel;
 template <bool _IsGPU, typename... _Name>
 class __reduce_kernel;
 
-template <typename Type>
+template <typename _Tp>
 struct DeleteOnDestroy
 {
-    Type* __ptr = nullptr;
+    _Tp* __ptr = nullptr;
 
-    DeleteOnDestroy(Type* _ptr) : __ptr(_ptr) {}
+    DeleteOnDestroy(_Tp* _ptr) : __ptr(_ptr) {}
     ~DeleteOnDestroy() { delete __ptr; }
 };
+
+template <typename _Tp>
+auto
+__get_result_accesssor(sycl::handler& __cgh, ::std::unique_ptr<sycl::buffer<_Tp>>&& __res_buf)
+{
+    using acc_type = decltype(__res_buf->template get_access<access_mode::write>(__cgh));
+    acc_type* __res_acc = nullptr;
+    if (__res_buf)
+        __res_acc = new acc_type(__res_buf->template get_access<access_mode::write>(__cgh));
+    return __res_acc;
+}
+
+template <typename _Acc, typename _Tp>
+void
+__set_result(bool __use_usm, _Acc& __res_acc, _Tp* __res_host_ptr, _Tp& __result)
+{
+    if (__use_usm)
+        *__res_host_ptr = __result;
+    else
+        (*__res_acc)[0] = __result;
+}
 
 //------------------------------------------------------------------------
 // parallel_transform_reduce - async patterns
@@ -77,18 +98,13 @@ struct __parallel_transform_reduce_seq_submitter<_Tp, __internal::__optional_ker
 
         return __exec.queue().submit([&, __n](sycl::handler& __cgh) {
             oneapi::dpl::__ranges::__require_access(__cgh, __rngs...); // get an access to data under SYCL buffer
-            using acc_type = decltype(__res_buf->template get_access<access_mode::write>(__cgh));
-            acc_type* __res_acc = nullptr;
-            if (__res_buf)
-                __res_acc = new acc_type(__res_buf->template get_access<access_mode::write>(__cgh));
+            auto __res_acc =
+                __get_result_accesssor(__cgh, ::std::forward<::std::unique_ptr<sycl::buffer<_Tp>>>(__res_buf));
             DeleteOnDestroy __res_acc_auto_deleter(__res_acc);
             __cgh.single_task<_Name...>([=] {
                 _Tp __result = __transform_pattern(__n, __rngs...);
                 __reduce_pattern.apply_init(__init, __result);
-                    if (__use_usm)
-                        *__res_host_ptr = __result;
-                    else
-                        (*__res_acc)[0] = __result;
+                __set_result(__use_usm, __res_acc, __res_host_ptr, __result);
             });
         });
     }
@@ -140,10 +156,8 @@ struct __parallel_transform_reduce_small_submitter<__work_group_size, __iters_pe
 
         return __exec.queue().submit([&, __n, __n_items](sycl::handler& __cgh) {
             oneapi::dpl::__ranges::__require_access(__cgh, __rngs...); // get an access to data under SYCL buffer
-            using acc_type = decltype(__res_buf->template get_access<access_mode::write>(__cgh));
-            acc_type* __res_acc = nullptr;
-            if (__res_buf)
-                __res_acc = new acc_type(__res_buf->template get_access<access_mode::write>(__cgh));
+            auto __res_acc =
+                __get_result_accesssor(__cgh, ::std::forward<::std::unique_ptr<sycl::buffer<_Tp>>>(__res_buf));
             DeleteOnDestroy __res_acc_auto_deleter(__res_acc);
             __dpl_sycl::__local_accessor<_Tp> __temp_local(sycl::range<1>(__work_group_size), __cgh);
             __cgh.parallel_for<_Name...>(
@@ -160,10 +174,7 @@ struct __parallel_transform_reduce_small_submitter<__work_group_size, __iters_pe
                     if (__local_idx == 0)
                     {
                         __reduce_pattern.apply_init(__init, __result);
-                        if (__use_usm)
-                            *__res_host_ptr = __result;
-                        else
-                            (*__res_acc)[0] = __result;
+                        __set_result(__use_usm, __res_acc, __res_host_ptr, __result);
                     }
                 });
         });
@@ -259,10 +270,8 @@ struct __parallel_transform_reduce_impl
 
                 oneapi::dpl::__ranges::__require_access(__cgh, __rngs...); // get an access to data under SYCL buffer
                 auto __temp_acc = __temp.template get_access<access_mode::read_write>(__cgh);
-                using acc_type = decltype(__res_buf->template get_access<access_mode::write>(__cgh));
-                acc_type* __res_acc = nullptr;
-                if (__res_buf)
-                    __res_acc = new acc_type(__res_buf->template get_access<access_mode::write>(__cgh));
+                auto __res_acc =
+                    __get_result_accesssor(__cgh, ::std::forward<::std::unique_ptr<sycl::buffer<_Tp>>>(__res_buf));
                 DeleteOnDestroy __res_acc_auto_deleter(__res_acc);
                 __dpl_sycl::__local_accessor<_Tp> __temp_local(sycl::range<1>(__work_group_size), __cgh);
 #if _ONEDPL_COMPILE_KERNEL && _ONEDPL_KERNEL_BUNDLE_PRESENT
@@ -297,10 +306,7 @@ struct __parallel_transform_reduce_impl
                             if (__n_groups == 1)
                             {
                                 __reduce_op.apply_init(__init, __result);
-                                if (__use_usm)
-                                    *__res_host_ptr = __result;
-                                else
-                                    (*__res_acc)[0] = __result;
+                                __set_result(__use_usm, __res_acc, __res_host_ptr, __result);
                             }
 
                             __temp_acc[__offset_1 + __item_id.get_group(0)] = __result;
