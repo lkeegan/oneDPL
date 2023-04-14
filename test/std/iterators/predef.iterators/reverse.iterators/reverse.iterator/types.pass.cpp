@@ -25,7 +25,7 @@
 // };
 
 #include "oneapi_std_test_config.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 #include "test_macros.h"
 #include "test_iterators.h"
@@ -40,8 +40,9 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 
 template <class It>
 struct find_current : private s::reverse_iterator<It>
@@ -60,10 +61,10 @@ template <class It>
 void
 test()
 {
-    cl::sycl::queue deviceQueue;
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     {
-        cl::sycl::range<1> numOfItems{1};
-        deviceQueue.submit([&](cl::sycl::handler& cgh) {
+        sycl::range<1> numOfItems{1};
+        deviceQueue.submit([&](sycl::handler& cgh) {
             cgh.single_task<kernelTest<It>>([=]() {
                 typedef s::reverse_iterator<It> R;
                 typedef s::iterator_traits<It> T;
@@ -79,13 +80,16 @@ test()
         });
     }
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     test<bidirectional_iterator<char*>>();
     test<random_access_iterator<char*>>();
     test<char*>();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
