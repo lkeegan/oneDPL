@@ -1,5 +1,5 @@
 #include "oneapi_std_test_config.h"
-#include <CL/sycl.hpp>
+
 #include <complex>
 #include <iostream>
 #ifdef USE_ONEAPI_STD
@@ -12,9 +12,10 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
-constexpr cl::sycl::access::mode sycl_read_write = cl::sycl::access::mode::read_write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
+constexpr sycl::access::mode sycl_read_write = sycl::access::mode::read_write;
 
 struct CopyOnly
 {
@@ -88,17 +89,16 @@ can_swap()
 class KernelSwapTest;
 
 void
-kernel_test()
+kernel_test(sycl::queue deviceQueue)
 {
-    cl::sycl::queue deviceQueue;
-    cl::sycl::cl_bool ret = false;
-    cl::sycl::range<1> numOfItems{1};
-    cl::sycl::range<1> numOfItems_acc{2};
+    sycl::cl_bool ret = false;
+    sycl::range<1> numOfItems{1};
+    sycl::range<1> numOfItems_acc{2};
     int acc[2] = {1, 2};
     {
-        cl::sycl::buffer<cl::sycl::cl_bool, 1> buffer1(&ret, numOfItems);
-        cl::sycl::buffer<int, 1> acc_buffer(acc, numOfItems_acc);
-        deviceQueue.submit([&](cl::sycl::handler& cgh) {
+        sycl::buffer<sycl::cl_bool, 1> buffer1(&ret, numOfItems);
+        sycl::buffer<int, 1> acc_buffer(acc, numOfItems_acc);
+        deviceQueue.submit([&](sycl::handler& cgh) {
             auto ret_access = buffer1.get_access<sycl_write>(cgh);
             auto acc_dev = acc_buffer.get_access<sycl_read_write>(cgh);
             cgh.single_task<class KernelSwapTest>([=]() {
@@ -156,20 +156,23 @@ kernel_test()
         });
     }
 
-    if (ret && acc[0] == 2 && acc[1] == 1)
-    {
-        std::cout << "Pass" << std::endl;
-    }
-    else
-    {
-        std::cout << "Fail" << std::endl;
-    }
+    TestUtils::exitOnError(ret && acc[0] == 2 && acc[1] == 1);
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main()
 {
+    int is_done = 0;
 
-    kernel_test();
-    return 0;
+#if TEST_DPCPP_BACKEND_PRESENT
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
+    if (TestUtils::has_type_support<double>(deviceQueue.get_device()))
+    {
+        kernel_test(deviceQueue);
+        is_done = 1;
+    }
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(is_done);
 }
