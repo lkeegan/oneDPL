@@ -12,7 +12,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -23,14 +23,15 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 
 template <class T>
 void
-test_is_destructible(cl::sycl::queue& deviceQueue)
+test_is_destructible(sycl::queue& deviceQueue)
 {
-    deviceQueue.submit([&](cl::sycl::handler& cgh) {
+    deviceQueue.submit([&](sycl::handler& cgh) {
         cgh.single_task<T>([=]() {
             static_assert(s::is_destructible<T>::value, "");
             static_assert(s::is_destructible<const T>::value, "");
@@ -48,9 +49,9 @@ test_is_destructible(cl::sycl::queue& deviceQueue)
 
 template <class T>
 void
-test_is_not_destructible(cl::sycl::queue& deviceQueue)
+test_is_not_destructible(sycl::queue& deviceQueue)
 {
-    deviceQueue.submit([&](cl::sycl::handler& cgh) {
+    deviceQueue.submit([&](sycl::handler& cgh) {
         cgh.single_task<T>([=]() {
             static_assert(!s::is_destructible<T>::value, "");
             static_assert(!s::is_destructible<const T>::value, "");
@@ -115,7 +116,7 @@ struct DeletedPrivateDestructor
 void
 kernel_test()
 {
-    cl::sycl::queue deviceQueue;
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     test_is_destructible<int&>(deviceQueue);
     test_is_destructible<Union>(deviceQueue);
     test_is_destructible<Empty>(deviceQueue);
@@ -131,7 +132,7 @@ kernel_test()
     test_is_not_destructible<void>(deviceQueue);
     test_is_not_destructible<Function>(deviceQueue);
 
-    if (deviceQueue.get_device().has_extension("cl_khr_fp64"))
+    if (TestUtils::has_type_support<double>(deviceQueue.get_device()))
     {
         test_is_destructible<double>(deviceQueue);
     }
@@ -145,11 +146,14 @@ kernel_test()
     test_is_not_destructible<DeletedProtectedDestructor>(deviceQueue);
     test_is_not_destructible<DeletedPrivateDestructor>(deviceQueue);
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     kernel_test();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
