@@ -13,7 +13,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -27,6 +27,7 @@ namespace s = std;
 #endif
 using s::optional;
 
+#if TEST_DPCPP_BACKEND_PRESENT
 struct X
 {
     int i_;
@@ -43,8 +44,8 @@ operator>=(const X& lhs, const X& rhs)
 void
 kernel_test()
 {
-    cl::sycl::queue q;
-    q.submit([&](cl::sycl::handler& cgh) {
+    sycl::queue q;
+    q.submit([&](sycl::handler& cgh) {
         cgh.single_task<class KernelTest>([=]() {
             {
                 typedef optional<X> O;
@@ -102,11 +103,14 @@ kernel_test()
         });
     });
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     kernel_test();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }

@@ -14,7 +14,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -27,17 +27,18 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
+#if TEST_DPCPP_BACKEND_PRESENT
 using s::make_optional;
 using s::optional;
 
 void
 kernel_test()
 {
-    cl::sycl::queue q;
-    cl::sycl::range<1> numOfItems1{1};
+    sycl::queue q;
+    sycl::range<1> numOfItems1{1};
     {
 
-        q.submit([&](cl::sycl::handler& cgh) {
+        q.submit([&](sycl::handler& cgh) {
             cgh.single_task<class KernelTest>([=]() {
                 {
                     constexpr auto opt = make_optional<int>('a');
@@ -48,10 +49,14 @@ kernel_test()
     }
 }
 
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     kernel_test();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
