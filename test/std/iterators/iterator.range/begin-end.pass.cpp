@@ -32,7 +32,7 @@
 //  All of these are constexpr in C++17
 
 #include "oneapi_std_test_config.h"
-#include <CL/sycl.hpp>
+
 #include "test_macros.h"
 #include <iostream>
 #include <initializer_list>
@@ -49,8 +49,9 @@ namespace s = std;
 // Disable the missing braces warning for this reason.
 #include "disable_missing_braces_warning.h"
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 
 template <typename C>
 class ConstContainerTest1;
@@ -63,12 +64,12 @@ template <typename C>
 bool
 test_const_container(const C& c, typename C::value_type val)
 {
-    cl::sycl::queue q;
+    sycl::queue q;
     auto ret = true;
-    cl::sycl::range<1> numOfItems{1};
-    cl::sycl::buffer<C, 1> buffer1(&c, numOfItems);
-    cl::sycl::buffer<bool, 1> buffer2(&ret, numOfItems);
-    q.submit([&](cl::sycl::handler& cgh) {
+    sycl::range<1> numOfItems{1};
+    sycl::buffer<C, 1> buffer1(&c, numOfItems);
+    sycl::buffer<bool, 1> buffer2(&ret, numOfItems);
+    q.submit([&](sycl::handler& cgh) {
         auto c_access = buffer1.template get_access<sycl_write>(cgh);
         auto ret_access = buffer2.template get_access<sycl_write>(cgh);
         cgh.single_task<ConstContainerTest1<C>>([=]() {
@@ -95,11 +96,11 @@ test_const_container(const C& c, typename C::value_type val)
 bool
 test_initializer_list()
 {
-    cl::sycl::queue q;
+    sycl::queue q;
     auto ret = true;
-    cl::sycl::range<1> numOfItems{1};
-    cl::sycl::buffer<bool, 1> buffer1(&ret, numOfItems);
-    q.submit([&](cl::sycl::handler& cgh) {
+    sycl::range<1> numOfItems{1};
+    sycl::buffer<bool, 1> buffer1(&ret, numOfItems);
+    q.submit([&](sycl::handler& cgh) {
         auto ret_access = buffer1.template get_access<sycl_write>(cgh);
         cgh.single_task<class KernelTest1>([=]() {
             {
@@ -118,12 +119,12 @@ template <typename C>
 bool
 test_container(C& c, typename C::value_type val)
 {
-    cl::sycl::queue q;
+    sycl::queue q;
     auto ret = true;
-    cl::sycl::range<1> numOfItems{1};
-    cl::sycl::buffer<C, 1> buffer1(&c, numOfItems);
-    cl::sycl::buffer<bool, 1> buffer2(&ret, numOfItems);
-    q.submit([&](cl::sycl::handler& cgh) {
+    sycl::range<1> numOfItems{1};
+    sycl::buffer<C, 1> buffer1(&c, numOfItems);
+    sycl::buffer<bool, 1> buffer2(&ret, numOfItems);
+    q.submit([&](sycl::handler& cgh) {
         auto c_access = buffer1.template get_access<sycl_write>(cgh);
         auto ret_access = buffer2.template get_access<sycl_write>(cgh);
         cgh.single_task<ContainerTest1<C>>([=]() {
@@ -150,8 +151,8 @@ test_container(C& c, typename C::value_type val)
 void
 kernel_test()
 {
-    cl::sycl::queue q;
-    q.submit([&](cl::sycl::handler& cgh) {
+    sycl::queue q;
+    q.submit([&](sycl::handler& cgh) {
         cgh.single_task<class KernelTest>([=]() {
 #if TEST_STD_VER > 14
             {
@@ -194,10 +195,12 @@ kernel_test()
         });
     });
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     std::array<int, 1> a;
     a[0] = 3;
 
@@ -206,6 +209,7 @@ main(int, char**)
     ret &= test_initializer_list();
 
     kernel_test();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
