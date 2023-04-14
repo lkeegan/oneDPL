@@ -12,7 +12,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -24,8 +24,9 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 
 struct S
 {
@@ -84,9 +85,9 @@ struct test_invoke_result<Fn(Args...), Ret>
 
 template <class KernelTest, class T, class U>
 void
-test_result_of(cl::sycl::queue& deviceQueue)
+test_result_of(sycl::queue& deviceQueue)
 {
-    deviceQueue.submit([&](cl::sycl::handler& cgh) {
+    deviceQueue.submit([&](sycl::handler& cgh) {
         cgh.single_task<KernelTest>([=]() {
             ASSERT_SAME_TYPE(U, typename s::result_of<T>::type);
 #if TEST_STD_VER > 14
@@ -114,9 +115,9 @@ struct test_invoke_no_result<Fn(Args...)>
 
 template <class KernelTest, class T>
 void
-test_no_result(cl::sycl::queue& deviceQueue)
+test_no_result(sycl::queue& deviceQueue)
 {
-    deviceQueue.submit([&](cl::sycl::handler& cgh) {
+    deviceQueue.submit([&](sycl::handler& cgh) {
         cgh.single_task<KernelTest>([=]() {
             static_assert((!HasType<s::result_of<T>>::value), "");
 #if TEST_STD_VER > 14
@@ -151,11 +152,11 @@ class KernelTest21;
 void
 kernel_test()
 {
-    cl::sycl::queue deviceQueue;
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     typedef NotDerived ND;
     { // functor object
         test_result_of<KernelTest1, S(int), short>(deviceQueue);
-        if (deviceQueue.get_device().has_extension("cl_khr_fp64"))
+        if (TestUtils::has_type_support<double>(deviceQueue.get_device()))
         {
             test_result_of<KernelTest2, S&(unsigned char, int&), double>(deviceQueue);
             test_result_of<KernelTest3, S const&(unsigned char, int&), double const&>(deviceQueue);
@@ -183,11 +184,14 @@ kernel_test()
         test_no_result<KernelTest21, PMD(ND&)>(deviceQueue);
     }
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main()
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     kernel_test();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
