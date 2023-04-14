@@ -1,6 +1,6 @@
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -11,6 +11,7 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
+#if TEST_DPCPP_BACKEND_PRESENT
 constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
 constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 
@@ -52,10 +53,10 @@ struct test_t
 };
 
 // const&
-cl::sycl::cl_bool
+sycl::cl_bool
 kernel_test()
 {
-    sycl::queue deviceQueue;
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     sycl::cl_bool ret = false;
     sycl::cl_bool check = false;
     sycl::range<1> numOfItem{1};
@@ -69,7 +70,7 @@ kernel_test()
         sycl::buffer<sycl::cl_bool, 1> buffer2(&check, numOfItem);
         sycl::buffer<decltype(p_st_1), 1> buffer3(&p_st_1, numOfItem);
         sycl::buffer<decltype(p_st_1), 1> buffer4(&p_st_2, numOfItem);
-        deviceQueue.submit([&](cl::sycl::handler& cgh) {
+        deviceQueue.submit([&](sycl::handler& cgh) {
             auto ret_acc = buffer1.get_access<sycl_write>(cgh);
             auto check_acc = buffer2.get_access<sycl_write>(cgh);
             auto acc1 = buffer3.get_access<sycl_write>(cgh);
@@ -94,18 +95,15 @@ kernel_test()
         return false;
     return ret;
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main()
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     auto ret = kernel_test();
-    if (ret)
-    {
-        std::cout << "pass" << std::endl;
-    }
-    else
-    {
-        std::cout << "fail" << std::endl;
-    }
-    return 0;
+    TestUtils::exitOnError(ret);
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }

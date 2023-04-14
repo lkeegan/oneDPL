@@ -1,6 +1,6 @@
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -11,13 +11,14 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
+#if TEST_DPCPP_BACKEND_PRESENT
 constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
 constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 
-cl::sycl::cl_bool
+sycl::cl_bool
 kernel_test1()
 {
-    sycl::queue deviceQueue;
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     sycl::cl_bool ret = false;
     sycl::cl_bool check = false;
     sycl::range<1> numOfItem{1};
@@ -54,10 +55,10 @@ struct empty
 {
 };
 
-cl::sycl::cl_bool
+sycl::cl_bool
 kernel_test2()
 {
-    sycl::queue deviceQueue;
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     sycl::cl_bool ret = false;
     sycl::range<1> numOfItem{1};
     s::pair<s::pair<empty, empty>, empty> p;
@@ -77,10 +78,10 @@ kernel_test2()
     return ret;
 }
 
-cl::sycl::cl_bool
+sycl::cl_bool
 kernel_test3()
 {
-    sycl::queue deviceQueue;
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     sycl::cl_bool ret = false;
     sycl::range<1> numOfItem{1};
     typedef s::pair<int, int> int_pair;
@@ -104,17 +105,15 @@ kernel_test3()
     }
     return ret;
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
 int
 main()
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     auto ret = kernel_test1() && kernel_test2() && kernel_test3();
-    if (ret)
-    {
-        std::cout << "pass" << std::endl;
-    }
-    else
-    {
-        std::cout << "fail" << std::endl;
-    }
-    return 0;
+    TestUtils::exitOnError(ret);
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }

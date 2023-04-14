@@ -2,7 +2,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -15,6 +15,7 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
+#if TEST_DPCPP_BACKEND_PRESENT
 constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
 constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 
@@ -74,10 +75,10 @@ struct type_two
     int n1_, n2_;
 };
 
-cl::sycl::cl_bool
+sycl::cl_bool
 kernel_test()
 {
-    sycl::queue deviceQueue;
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     sycl::cl_bool ret = false;
     sycl::cl_bool check = false;
     sycl::range<1> numOfItem{1};
@@ -86,11 +87,11 @@ kernel_test()
     s::pair<type_one, type_two> pp1(s::piecewise_construct, s::forward_as_tuple(6), s::forward_as_tuple(5, 4));
     s::pair<type_two, type_two> pp2(s::piecewise_construct, s::forward_as_tuple(2, 1), s::forward_as_tuple(-1, -3));
     {
-        sycl::buffer<cl::sycl::cl_bool, 1> buffer1(&ret, numOfItem);
+        sycl::buffer<sycl::cl_bool, 1> buffer1(&ret, numOfItem);
         sycl::buffer<decltype(pp0), 1> buffer2(&pp0, numOfItem);
         sycl::buffer<decltype(pp1), 1> buffer3(&pp1, numOfItem);
         sycl::buffer<decltype(pp2), 1> buffer4(&pp2, numOfItem);
-        deviceQueue.submit([&](cl::sycl::handler& cgh) {
+        deviceQueue.submit([&](sycl::handler& cgh) {
             auto ret_acc1 = buffer1.get_access<sycl_write>(cgh);
             auto acc1 = buffer2.get_access<sycl_write>(cgh);
             auto acc2 = buffer3.get_access<sycl_write>(cgh);
@@ -126,18 +127,15 @@ kernel_test()
         return false;
     return ret;
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main()
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     auto ret = kernel_test();
-    if (ret)
-    {
-        std::cout << "pass" << std::endl;
-    }
-    else
-    {
-        std::cout << "fail" << std::endl;
-    }
-    return 0;
+    TestUtils::exitOnError(ret);
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
