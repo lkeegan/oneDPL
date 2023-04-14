@@ -11,7 +11,7 @@
 // struct forward_iterator_tag: public input_iterator_tag {};
 
 #include "oneapi_std_test_config.h"
-#include <CL/sycl.hpp>
+
 #include "test_macros.h"
 #include <iostream>
 #ifdef USE_ONEAPI_STD
@@ -24,11 +24,12 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
+#if TEST_DPCPP_BACKEND_PRESENT
 void
 kernelTest()
 {
-    cl::sycl::queue q;
-    q.submit([&](cl::sycl::handler& cgh) {
+    sycl::queue q;
+    q.submit([&](sycl::handler& cgh) {
         cgh.single_task<class IteratorTest>([=]() {
             s::forward_iterator_tag tag;
             ((void)tag); // Prevent unused warning
@@ -37,11 +38,14 @@ kernelTest()
         });
     });
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     kernelTest();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }

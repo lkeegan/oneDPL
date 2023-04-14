@@ -12,7 +12,7 @@
 // struct iterator_traits<const T*>
 
 #include "oneapi_std_test_config.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 #include "test_macros.h"
 
@@ -27,6 +27,7 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
+#if TEST_DPCPP_BACKEND_PRESENT
 struct A
 {
 };
@@ -34,8 +35,8 @@ struct A
 void
 kernelTest()
 {
-    cl::sycl::queue q;
-    q.submit([&](cl::sycl::handler& cgh) {
+    sycl::queue q;
+    q.submit([&](sycl::handler& cgh) {
         cgh.single_task<class IteratorTest>([=]() {
             typedef s::iterator_traits<volatile A*> It;
             static_assert((s::is_same<It::difference_type, s::ptrdiff_t>::value), "");
@@ -45,11 +46,14 @@ kernelTest()
         });
     });
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     kernelTest();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }

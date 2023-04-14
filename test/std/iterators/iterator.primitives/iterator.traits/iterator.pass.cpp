@@ -19,7 +19,7 @@
 // };
 
 #include "oneapi_std_test_config.h"
-#include <CL/sycl.hpp>
+
 #include "test_macros.h"
 
 #ifdef USE_ONEAPI_STD
@@ -32,6 +32,7 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
+#if TEST_DPCPP_BACKEND_PRESENT
 struct A
 {
 };
@@ -48,8 +49,8 @@ struct test_iterator
 void
 kernelTest()
 {
-    cl::sycl::queue q;
-    q.submit([&](cl::sycl::handler& cgh) {
+    sycl::queue q;
+    q.submit([&](sycl::handler& cgh) {
         cgh.single_task<class IteratorTest>([=]() {
             typedef s::iterator_traits<test_iterator> It;
             static_assert((s::is_same<It::difference_type, int>::value), "");
@@ -60,11 +61,14 @@ kernelTest()
         });
     });
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     kernelTest();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
