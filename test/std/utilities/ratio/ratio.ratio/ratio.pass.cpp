@@ -3,7 +3,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -14,19 +14,20 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 
 template <long long N, long long D, long long eN, long long eD, class KernelName>
-cl::sycl::cl_bool
+sycl::cl_bool
 test()
 {
-    cl::sycl::queue deviceQueue;
-    cl::sycl::cl_bool ret = false;
-    cl::sycl::range<1> item1{1};
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
+    sycl::cl_bool ret = false;
+    sycl::range<1> item1{1};
     {
-        cl::sycl::buffer<cl::sycl::cl_bool, 1> buffer1(&ret, item1);
-        deviceQueue.submit([&](cl::sycl::handler& cgh) {
+        sycl::buffer<sycl::cl_bool, 1> buffer1(&ret, item1);
+        deviceQueue.submit([&](sycl::handler& cgh) {
             auto ret_acc = buffer1.get_access<sycl_write>(cgh);
             cgh.single_task<KernelName>([=]() {
                 static_assert((s::ratio<N, D>::num == eN), "");
@@ -59,9 +60,12 @@ class T18;
 class T19;
 class T20;
 
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     auto ret = test<1, 1, 1, 1, T1>();
     ret &= test<1, 10, 1, 10, T2>();
     ret &= test<10, 10, 1, 1, T3>();
@@ -82,9 +86,9 @@ main(int, char**)
     ret &= test<-0x7FFFFFFFFFFFFFFFLL, 127, -72624976668147841LL, 1, T18>();
     ret &= test<0x7FFFFFFFFFFFFFFFLL, -127, -72624976668147841LL, 1, T19>();
     ret &= test<-0x7FFFFFFFFFFFFFFFLL, -127, 72624976668147841LL, 1, T20>();
-    if (ret)
-        std::cout << "pass" << std::endl;
-    else
-        std::cout << "fail" << std::endl;
-    return 0;
+
+    TestUtils::exitOnError(ret);
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }

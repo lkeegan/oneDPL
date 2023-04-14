@@ -1,6 +1,6 @@
 #include "oneapi_std_test_config.h"
 #include "testsuite_common_types.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -13,21 +13,25 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main()
 {
-    cl::sycl::queue deviceQueue;
+#if TEST_DPCPP_BACKEND_PRESENT
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     {
-        deviceQueue.submit([&](cl::sycl::handler& cgh) {
+        deviceQueue.submit([&](sycl::handler& cgh) {
             cgh.single_task<class KernelTest>([=]() {
                 constexpr_comparison_operators test;
                 test.operator()<s::tuple<int, int>>();
             });
         });
     }
-    std::cout << "pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
