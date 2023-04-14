@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "oneapi_std_test_config.h"
-#include <CL/sycl.hpp>
+
 #include "test_macros.h"
 #include <iostream>
 
@@ -24,13 +24,14 @@ namespace s = std;
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     const s::size_t N = 1;
     bool ret = true;
     {
-        cl::sycl::buffer<bool, 1> buf(&ret, cl::sycl::range<1>{N});
-        cl::sycl::queue q;
-        q.submit([&](cl::sycl::handler& cgh) {
-            auto acc = buf.get_access<cl::sycl::access::mode::write>(cgh);
+        sycl::buffer<bool, 1> buf(&ret, sycl::range<1>{N});
+        sycl::queue q;
+        q.submit([&](sycl::handler& cgh) {
+            auto acc = buf.get_access<sycl::access::mode::write>(cgh);
             cgh.single_task<class KernelTest1>([=]() {
                 s::ptrdiff_t i = reinterpret_cast<s::ptrdiff_t>(nullptr);
                 acc[0] &= (i == 0);
@@ -38,11 +39,8 @@ main(int, char**)
         });
     }
 
-    if (ret)
+    TestUtils::exitOnError(ret);
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
-        std::cout << "Pass" << std::endl;
-    else
-        std::cout << "Fail" << std::endl;
-
-    return 0;
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }

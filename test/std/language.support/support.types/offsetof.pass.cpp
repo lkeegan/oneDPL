@@ -6,7 +6,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -21,20 +21,24 @@ namespace s = std;
 #    error offsetof not defined
 #endif
 
+#if TEST_DPCPP_BACKEND_PRESENT
 struct A
 {
     int x;
 };
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     {
-        cl::sycl::queue q;
-        q.submit([&](cl::sycl::handler& cgh) {
+        sycl::queue q;
+        q.submit([&](sycl::handler& cgh) {
             cgh.single_task<class KernelTest1>([=]() { static_assert(noexcept(offsetof(A, x)), ""); });
         });
     }
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
