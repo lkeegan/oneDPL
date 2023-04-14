@@ -15,7 +15,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -30,22 +30,23 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 using s::optional;
 
 template <class Tp>
 bool
 assign_empty(optional<Tp>&& lhs)
 {
-    cl::sycl::queue q;
+    sycl::queue q;
     bool ret = true;
-    cl::sycl::range<1> numOfItems1{1};
+    sycl::range<1> numOfItems1{1};
     {
-        cl::sycl::buffer<bool, 1> buffer1(&ret, numOfItems1);
-        cl::sycl::buffer<optional<Tp>, 1> buffer2(&lhs, numOfItems1);
+        sycl::buffer<bool, 1> buffer1(&ret, numOfItems1);
+        sycl::buffer<optional<Tp>, 1> buffer2(&lhs, numOfItems1);
 
-        q.submit([&](cl::sycl::handler& cgh) {
+        q.submit([&](sycl::handler& cgh) {
             auto ret_access = buffer1.get_access<sycl_write>(cgh);
             auto lhs_access = buffer2.template get_access<sycl_write>(cgh);
             cgh.single_task<class KernelTest1>([=]() {
@@ -62,14 +63,14 @@ template <class Tp>
 bool
 assign_value(optional<Tp>&& lhs)
 {
-    cl::sycl::queue q;
+    sycl::queue q;
     bool ret = true;
-    cl::sycl::range<1> numOfItems1{1};
+    sycl::range<1> numOfItems1{1};
     {
-        cl::sycl::buffer<bool, 1> buffer1(&ret, numOfItems1);
-        cl::sycl::buffer<optional<Tp>, 1> buffer2(&lhs, numOfItems1);
+        sycl::buffer<bool, 1> buffer1(&ret, numOfItems1);
+        sycl::buffer<optional<Tp>, 1> buffer2(&lhs, numOfItems1);
 
-        q.submit([&](cl::sycl::handler& cgh) {
+        q.submit([&](sycl::handler& cgh) {
             auto ret_access = buffer1.get_access<sycl_write>(cgh);
             auto lhs_access = buffer2.template get_access<sycl_write>(cgh);
             cgh.single_task<class KernelTest2>([=]() {
@@ -86,13 +87,13 @@ assign_value(optional<Tp>&& lhs)
 bool
 kernel_test()
 {
-    cl::sycl::queue q;
+    sycl::queue q;
     bool ret = true;
-    cl::sycl::range<1> numOfItems1{1};
+    sycl::range<1> numOfItems1{1};
     {
-        cl::sycl::buffer<bool, 1> buffer1(&ret, numOfItems1);
+        sycl::buffer<bool, 1> buffer1(&ret, numOfItems1);
 
-        q.submit([&](cl::sycl::handler& cgh) {
+        q.submit([&](sycl::handler& cgh) {
             auto ret_access = buffer1.get_access<sycl_write>(cgh);
             cgh.single_task<class KernelTest3>([=]() {
                 {
@@ -133,17 +134,18 @@ kernel_test()
     }
     return ret;
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main(int, char**)
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     using O = optional<int>;
     auto ret = assign_empty(O{42});
     ret &= assign_value(O{42});
     ret &= kernel_test();
-    if (ret)
-        std::cout << "Pass" << std::endl;
-    else
-        std::cout << "Fail" << std::endl;
-    return 0;
+    TestUtils::exitOnError(ret);
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }

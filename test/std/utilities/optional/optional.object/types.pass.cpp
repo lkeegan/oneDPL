@@ -18,7 +18,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -31,18 +31,18 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 using s::optional;
 
 template <class KernelTest, class Opt, class T>
 void
-test()
+test(sycl::queue q)
 {
-    cl::sycl::queue q;
     {
 
-        q.submit([&](cl::sycl::handler& cgh) {
+        q.submit([&](sycl::handler& cgh) {
             cgh.single_task<KernelTest>([=]() { static_assert(s::is_same<typename Opt::value_type, T>::value, ""); });
         });
     }
@@ -53,13 +53,22 @@ class KernelTest2;
 class KernelTest3;
 class KernelTest4;
 
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
 int
 main(int, char**)
 {
-    test<KernelTest1, optional<int>, int>();
-    test<KernelTest2, optional<const int>, const int>();
-    test<KernelTest3, optional<double>, double>();
-    test<KernelTest4, optional<const double>, const double>();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#if TEST_DPCPP_BACKEND_PRESENT
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
+
+    test<KernelTest1, optional<int>, int>(deviceQueue);
+    test<KernelTest2, optional<const int>, const int>(deviceQueue);
+    if (TestUtils::has_type_support<double>(deviceQueue.get_device()))
+    {
+        test<KernelTest3, optional<double>, double>(deviceQueue);
+        test<KernelTest4, optional<const double>, const double>(deviceQueue);
+    }
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
