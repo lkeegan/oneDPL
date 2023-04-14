@@ -12,7 +12,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 
 #ifdef USE_ONEAPI_STD
@@ -23,14 +23,15 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 
 template <class KernelTest, class T, unsigned A>
 void
-test_extent(cl::sycl::queue& deviceQueue)
+test_extent(sycl::queue& deviceQueue)
 {
-    deviceQueue.submit([&](cl::sycl::handler& cgh) {
+    deviceQueue.submit([&](sycl::handler& cgh) {
         cgh.single_task<KernelTest>([=]() {
             static_assert((s::extent<T>::value == A), "");
             static_assert((s::extent<const T>::value == A), "");
@@ -48,9 +49,9 @@ test_extent(cl::sycl::queue& deviceQueue)
 
 template <class KernelTest, class T, unsigned A>
 void
-test_extent1(cl::sycl::queue& deviceQueue)
+test_extent1(sycl::queue& deviceQueue)
 {
-    deviceQueue.submit([&](cl::sycl::handler& cgh) {
+    deviceQueue.submit([&](sycl::handler& cgh) {
         cgh.single_task<KernelTest>([=]() {
             static_assert((s::extent<T, 1>::value == A), "");
             static_assert((s::extent<const T, 1>::value == A), "");
@@ -92,7 +93,7 @@ class KernelTest16;
 void
 kernel_test()
 {
-    cl::sycl::queue deviceQueue;
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     test_extent<KernelTest1, void, 0>(deviceQueue);
     test_extent<KernelTest2, int&, 0>(deviceQueue);
     test_extent<KernelTest3, Class, 0>(deviceQueue);
@@ -101,7 +102,7 @@ kernel_test()
     test_extent<KernelTest6, int, 0>(deviceQueue);
     test_extent<KernelTest7, bool, 0>(deviceQueue);
     test_extent<KernelTest8, unsigned, 0>(deviceQueue);
-    if (deviceQueue.get_device().has_extension("cl_khr_fp64"))
+    if (TestUtils::has_type_support<double>(deviceQueue.get_device()))
     {
         test_extent<KernelTest9, double, 0>(deviceQueue);
     }
@@ -115,12 +116,14 @@ kernel_test()
     test_extent1<KernelTest15, int[2][4], 4>(deviceQueue);
     test_extent1<KernelTest16, int[][4], 4>(deviceQueue);
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main()
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     kernel_test();
-    std::cout << "Pass" << std::endl;
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
-    return 0;
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }

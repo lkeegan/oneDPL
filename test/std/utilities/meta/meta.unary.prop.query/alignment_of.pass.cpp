@@ -12,7 +12,7 @@
 
 #include "oneapi_std_test_config.h"
 #include "test_macros.h"
-#include <CL/sycl.hpp>
+
 #include <iostream>
 #include <cstdint>
 #ifdef USE_ONEAPI_STD
@@ -24,14 +24,15 @@ namespace s = oneapi_cpp_ns;
 namespace s = std;
 #endif
 
-constexpr cl::sycl::access::mode sycl_read = cl::sycl::access::mode::read;
-constexpr cl::sycl::access::mode sycl_write = cl::sycl::access::mode::write;
+#if TEST_DPCPP_BACKEND_PRESENT
+constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
+constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
 
 template <class T, unsigned A>
 void
-test_alignment_of(cl::sycl::queue& deviceQueue)
+test_alignment_of(sycl::queue& deviceQueue)
 {
-    deviceQueue.submit([&](cl::sycl::handler& cgh) {
+    deviceQueue.submit([&](sycl::handler& cgh) {
         cgh.single_task<T>([=]() {
             const unsigned AlignofResult = TEST_ALIGNOF(T);
             static_assert(AlignofResult == A, "Golden value does not match result of alignof keyword");
@@ -59,7 +60,7 @@ class Class
 void
 kernel_test()
 {
-    cl::sycl::queue deviceQueue;
+    sycl::queue deviceQueue = TestUtils::get_test_queue();
     test_alignment_of<int&, 4>(deviceQueue);
     test_alignment_of<Class, 1>(deviceQueue);
     test_alignment_of<int*, sizeof(intptr_t)>(deviceQueue);
@@ -67,16 +68,19 @@ kernel_test()
     test_alignment_of<char[3], 1>(deviceQueue);
     test_alignment_of<int, 4>(deviceQueue);
     test_alignment_of<unsigned, 4>(deviceQueue);
-    if (deviceQueue.get_device().has_extension("cl_khr_fp64"))
+    if (TestUtils::has_type_support<double>(deviceQueue.get_device()))
     {
         test_alignment_of<double, TEST_ALIGNOF(double)>(deviceQueue);
     }
 }
+#endif // TEST_DPCPP_BACKEND_PRESENT
 
 int
 main()
 {
+#if TEST_DPCPP_BACKEND_PRESENT
     kernel_test();
-    std::cout << "Pass" << std::endl;
-    return 0;
+#endif // TEST_DPCPP_BACKEND_PRESENT
+
+    return TestUtils::done(TEST_DPCPP_BACKEND_PRESENT);
 }
