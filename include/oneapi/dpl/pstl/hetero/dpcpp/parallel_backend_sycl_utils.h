@@ -509,8 +509,74 @@ using __repacked_tuple_t = typename __repacked_tuple<T>::type;
 template <typename _ContainerOrIterable>
 using __value_t = typename __internal::__memobj_traits<_ContainerOrIterable>::value_type;
 
-//A contract for future class: <sycl::event or other event, a value or sycl::buffers...>
-//Impl details: inheretance (private) instead of aggregation for enabling the empty base optimization.
+template <typename _T>
+struct __accessor
+{
+    using __accessor_t = sycl::accessor<_T, 1, sycl::access::mode::write, __dpl_sycl::__target_device,
+                                        sycl::access::placeholder::true_t>;
+    __accessor_t m_acc;
+    _T* m_ptr;
+    bool m_usm;
+
+    auto
+    get_pointer() const //should be cached within a kernel
+    {
+        return m_usm ? m_ptr : &m_acc[0];
+    }
+};
+
+template <typename _ExecutionPolicy, typename _T>
+struct __storage
+{
+  private:
+    using __sycl_buffer_t = sycl::buffer<_T, 1>;
+    ::std::shared_ptr<__sycl_buffer_t> m_sycl_buf;
+    ::std::shared_ptr<_T> m_usm_buf;
+    _ExecutionPolicy m_exec;
+    bool m_usm;
+
+  public:
+    __storage(const _ExecutionPolicy& __exec, bool __usm, ::std::size_t __n) : m_usm(__usm), m_exec{__exec}
+    {
+        if (m_usm)
+        {
+            m_usm_buf = std::shared_ptr<_T>(
+                __internal::__sycl_usm_alloc<_ExecutionPolicy, _T, sycl::usm::alloc::host>{m_exec}(__n),
+                __internal::__sycl_usm_free<_ExecutionPolicy, _T>{m_exec});
+        }
+        else
+            m_sycl_buf = ::std::make_shared<__sycl_buffer_t>(__sycl_buffer_t(__n));
+    }
+    __storage(const __storage& __s) : m_usm(__s.m_usm), m_usm_buf(__s.m_usm_buf), m_sycl_buf(__s.m_sycl_buf)
+    {
+    }
+    auto
+    get_acc(sycl::handler& __cgh)
+    {
+        __accessor<_T> acc;
+        if(m_usm)
+        {
+            acc.m_usm = true;
+            acc.m_ptr = m_usm_buf.get();
+        }
+        else
+        {
+            acc.m_usm = false;
+            new (&acc.m_acc) sycl::accessor(*m_sycl_buf, __cgh, sycl::read_write, __dpl_sycl::__no_init{});
+            __cgh.require(acc.m_acc);
+        }
+        return acc;
+    }
+
+    auto
+    get_value(size_t idx = 0)
+    {
+        return m_usm ? *(m_usm_buf.get() + idx) : m_sycl_buf->get_host_access(sycl::read_only)[idx];
+    }
+};
+
+//A contract for future class: <sycl::event or other event, a value, sycl::buffers..., or __storage (USM or buffer)>
+//Impl details: inheritance (private) instead of aggregation for enabling the empty base optimization.
 template <typename _Event, typename... _Args>
 class __future : private std::tuple<_Args...>
 {
@@ -522,6 +588,13 @@ class __future : private std::tuple<_Args...>
     {
         //according to a contract, returned value is one-element sycl::buffer
         return __buf.get_host_access(sycl::read_only)[0];
+    }
+
+    template <typename _ExecutionPolicy, typename _T>
+    constexpr auto
+    __wait_and_get_value(__storage<_ExecutionPolicy, _T>& __buf)
+    {
+        return __buf.get_value();
     }
 
     template <typename _T>
@@ -575,7 +648,7 @@ class __future : private std::tuple<_Args...>
 };
 
 inline bool
-has_usm_host_allocations(sycl::queue __queue)
+__has_usm_host_allocations(sycl::queue __queue)
 {
     return __queue.get_device().has(sycl::aspect::usm_host_allocations);
 }
