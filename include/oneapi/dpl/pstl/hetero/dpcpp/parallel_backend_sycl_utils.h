@@ -512,8 +512,8 @@ using __value_t = typename __internal::__memobj_traits<_ContainerOrIterable>::va
 template <typename _T>
 struct __accessor
 {
-    using __accessor_t = sycl::accessor<_T, 1, sycl::access::mode::write, __dpl_sycl::__target_device,
-                                        sycl::access::placeholder::true_t>;
+    using __accessor_t = sycl::accessor<_T, 1, sycl::access::mode::read_write, __dpl_sycl::__target_device,
+                                        sycl::access::placeholder::false_t>;
     __accessor_t m_acc;
     _T* m_ptr;
     bool m_usm;
@@ -532,29 +532,25 @@ struct __storage
     using __sycl_buffer_t = sycl::buffer<_T, 1>;
     ::std::shared_ptr<__sycl_buffer_t> m_sycl_buf;
     ::std::shared_ptr<_T> m_usm_buf;
-    _ExecutionPolicy m_exec;
     bool m_usm;
 
   public:
-    __storage(const _ExecutionPolicy& __exec, bool __usm, ::std::size_t __n) : m_usm(__usm), m_exec{__exec}
+    __storage(_ExecutionPolicy& __exec, bool __usm, ::std::size_t __n) : m_usm(__usm)
     {
         if (m_usm)
         {
             m_usm_buf = std::shared_ptr<_T>(
-                __internal::__sycl_usm_alloc<_ExecutionPolicy, _T, sycl::usm::alloc::host>{m_exec}(__n),
-                __internal::__sycl_usm_free<_ExecutionPolicy, _T>{m_exec});
+                __internal::__sycl_usm_alloc<_ExecutionPolicy, _T, sycl::usm::alloc::host>{__exec}(__n),
+                __internal::__sycl_usm_free<_ExecutionPolicy, _T>{__exec});
         }
         else
             m_sycl_buf = ::std::make_shared<__sycl_buffer_t>(__sycl_buffer_t(__n));
-    }
-    __storage(const __storage& __s) : m_usm(__s.m_usm), m_usm_buf(__s.m_usm_buf), m_sycl_buf(__s.m_sycl_buf)
-    {
     }
     auto
     get_acc(sycl::handler& __cgh)
     {
         __accessor<_T> acc;
-        if(m_usm)
+        if (m_usm)
         {
             acc.m_usm = true;
             acc.m_ptr = m_usm_buf.get();
@@ -562,8 +558,7 @@ struct __storage
         else
         {
             acc.m_usm = false;
-            new (&acc.m_acc) sycl::accessor(*m_sycl_buf, __cgh, sycl::read_write, __dpl_sycl::__no_init{});
-            __cgh.require(acc.m_acc);
+            acc.m_acc = sycl::accessor(*m_sycl_buf, __cgh, sycl::read_write, __dpl_sycl::__no_init{});
         }
         return acc;
     }
@@ -594,6 +589,7 @@ class __future : private std::tuple<_Args...>
     constexpr auto
     __wait_and_get_value(__storage<_ExecutionPolicy, _T>& __buf)
     {
+        wait();
         return __buf.get_value();
     }
 
