@@ -546,6 +546,7 @@ struct __storage
         else
             m_sycl_buf = ::std::make_shared<__sycl_buffer_t>(__sycl_buffer_t(__n));
     }
+
     auto
     get_acc(sycl::handler& __cgh)
     {
@@ -568,6 +569,12 @@ struct __storage
     {
         return m_usm ? *(m_usm_buf.get() + idx) : m_sycl_buf->get_host_access(sycl::read_only)[idx];
     }
+
+    bool
+    get_usm()
+    {
+        return m_usm;
+    }
 };
 
 //A contract for future class: <sycl::event or other event, a value, sycl::buffers..., or __storage (USM or buffer)>
@@ -589,7 +596,9 @@ class __future : private std::tuple<_Args...>
     constexpr auto
     __wait_and_get_value(__storage<_ExecutionPolicy, _T>& __buf)
     {
-        wait();
+        // Explicit wait in case of USM memory. Buffer accessors are synchronous.
+        if (__buf.get_usm())
+            wait();
         return __buf.get_value();
     }
 
@@ -656,67 +665,6 @@ __use_USM_host_allocations(sycl::queue __queue)
         return false;
     return true;
 }
-
-// A contract for a future class for reduce: <execution policy, sycl::event, USM host memory for the reduced value>
-template <typename _ExecutionPolicy, typename _Event, typename _Res>
-class __reduce_future
-{
-    _ExecutionPolicy __my_exec;
-    _Event __my_event;
-
-    struct ResDeleter
-    {
-        sycl::queue __queue;
-        ResDeleter(sycl::queue __q) : __queue(::std::move(__q)) {}
-
-        void
-        operator()(_Res* __res)
-        {
-            ::sycl::free(__res, __queue);
-        }
-    };
-
-    ::std::unique_ptr<sycl::buffer<_Res>> __res_buf;
-
-    using ResPointer = ::std::unique_ptr<_Res, ResDeleter>;
-    ResPointer __res_ptr;
-
-  public:
-    __reduce_future(_ExecutionPolicy&& __exec, _Event&& __e, ::std::unique_ptr<sycl::buffer<_Res>>&& __buf, _Res* __res)
-        : __my_exec(::std::forward<_ExecutionPolicy>(__exec)), __my_event(::std::forward<_Event>(__e)),
-          __res_buf(::std::move(__buf)), __res_ptr(__res, __my_exec.queue())
-    {
-    }
-
-    auto
-    event() const
-    {
-        return __my_event;
-    }
-    operator _Event() const { return event(); }
-    void
-    wait()
-    {
-#if !ONEDPL_ALLOW_DEFERRED_WAITING
-        __my_event.wait_and_throw();
-#endif
-    }
-
-    auto
-    get()
-    {
-        __my_event.wait_and_throw();
-        if (!__res_ptr)
-        {
-            //according to a contract, returned value is one-element sycl::buffer
-            return __res_buf->get_host_access(sycl::read_only)[0];
-        }
-        else
-        {
-            return *__res_ptr.get();
-        }
-    }
-};
 
 } // namespace __par_backend_hetero
 } // namespace dpl
