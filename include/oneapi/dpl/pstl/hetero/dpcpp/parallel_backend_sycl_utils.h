@@ -643,10 +643,18 @@ class __future : private std::tuple<_Args...>
     }
 };
 
+// Only use USM host allocations on Intel GPUs. Other devices show significant slowdowns.
 inline bool
-__has_usm_host_allocations(sycl::queue __queue)
+__use_USM_host_allocations(sycl::queue __queue)
 {
-    return __queue.get_device().has(sycl::aspect::usm_host_allocations);
+    auto __device = __queue.get_device();
+    if (!__device.is_gpu())
+        return false;
+    if (!__device.has(sycl::aspect::usm_host_allocations))
+        return false;
+    if (__device.get_info<sycl::info::device::vendor_id>() != 32902)
+        return false;
+    return true;
 }
 
 // A contract for a future class for reduce: <execution policy, sycl::event, USM host memory for the reduced value>
