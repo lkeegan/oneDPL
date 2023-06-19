@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <type_traits>
 #include <limits>
+#include <memory>
 
 namespace oneapi::dpl::experimental::kt::esimd::impl
 {
@@ -634,6 +635,21 @@ create_simd(T initial, T step)
     }
     return ret;
 }
+
+template <typename _T>
+struct __sycl_usm_free
+{
+    sycl::queue __q;
+
+    void
+    operator()(_T* __memory) const
+    {
+        sycl::free(__memory, __q);
+    }
+};
+
+template <typename _T>
+using __container_t = ::std::unique_ptr<_T, __sycl_usm_free<_T>>;
 
 } // oneapi::dpl::experimental::kt::esimd::impl::utils
 } // oneapi::dpl::experimental::kt::esimd::impl
