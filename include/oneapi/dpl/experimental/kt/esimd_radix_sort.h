@@ -95,7 +95,7 @@ radix_sort(_ExecutionPolicy&& __exec, _Range&& __rng)
 template <std::uint16_t WorkGroupSize, std::uint16_t DataPerWorkItem, bool IsAscending, std::uint32_t RadixBits,
           typename _ExecutionPolicy, typename _KeysRange, typename _ValuesRange,
           oneapi::dpl::__internal::__enable_if_device_execution_policy<_ExecutionPolicy, int> = 0>
-void
+sycl::event
 radix_sort_by_key(_ExecutionPolicy&& __exec, _KeysRange&& __keys, _ValuesRange&& __values)
 {
     const ::std::size_t __n = __keys.size();
@@ -106,7 +106,7 @@ radix_sort_by_key(_ExecutionPolicy&& __exec, _KeysRange&& __keys, _ValuesRange&&
     using _KeyT = oneapi::dpl::__internal::__value_t<_KeysRange>;
     using _ValueT = oneapi::dpl::__internal::__value_t<_ValuesRange>;
 
-    oneapi::dpl::experimental::esimd::impl::onesweep_by_key<_KernelName, _KeyT, _ValueT, _KeysRange, _ValuesRange, RadixBits, IsAscending, DataPerWorkItem>(
+    return oneapi::dpl::experimental::esimd::impl::onesweep_by_key<_KernelName, _KeyT, _ValueT, _KeysRange, _ValuesRange, RadixBits, IsAscending, DataPerWorkItem>(
         __exec.queue(), ::std::forward<_KeysRange>(__keys), std::forward<_ValuesRange>(__values), __n);
 }
 
@@ -140,29 +140,30 @@ radix_sort(_ExecutionPolicy&& __exec, _Iterator __first, _Iterator __last)
 
 template <std::uint16_t WorkGroupSize, std::uint16_t DataPerWorkItem, bool IsAscending = true,
           std::uint32_t RadixBits = 8, typename _ExecutionPolicy, typename _KeysRange, typename _ValuesRange>
-void
+sycl::event
 radix_sort_by_key(_ExecutionPolicy&& __exec, _KeysRange&& __keys, _ValuesRange&& __values)
 {
     if (__keys.size() < 2)
-        return;
+        return sycl::event{};
 
-    oneapi::dpl::experimental::esimd::impl::radix_sort_by_key<WorkGroupSize, DataPerWorkItem, IsAscending, RadixBits>
+    return oneapi::dpl::experimental::esimd::impl::radix_sort_by_key<WorkGroupSize, DataPerWorkItem, IsAscending, RadixBits>
         (::std::forward<_ExecutionPolicy>(__exec), __keys, __values);
 }
 
 template <std::uint16_t WorkGroupSize, std::uint16_t DataPerWorkItem, bool IsAscending = true,
           std::uint32_t RadixBits = 8, typename _ExecutionPolicy, typename _KeysIterator, typename _ValuesIterator>
-void
+sycl::event
 radix_sort_by_key(_ExecutionPolicy&& __exec, _KeysIterator __keys_first, _KeysIterator __keys_last, _ValuesIterator __values_first)
 {
     auto __n = __keys_last - __keys_first;
     if (__n < 2)
-        return;
+        sycl::event{};
+
     auto __keys_keep = oneapi::dpl::__ranges::__get_sycl_range<oneapi::dpl::__par_backend_hetero::access_mode::read_write, _KeysIterator>();
     auto __keys = __keys_keep(__keys_first, __keys_last);
     auto __values_keep = oneapi::dpl::__ranges::__get_sycl_range<oneapi::dpl::__par_backend_hetero::access_mode::read_write, _ValuesIterator>();
     auto __values = __values_keep(__values_first, __values_first + __n);
-    oneapi::dpl::experimental::esimd::impl::radix_sort_by_key<WorkGroupSize, DataPerWorkItem, IsAscending, RadixBits>
+    return oneapi::dpl::experimental::esimd::impl::radix_sort_by_key<WorkGroupSize, DataPerWorkItem, IsAscending, RadixBits>
         (::std::forward<_ExecutionPolicy>(__exec), __keys.all_view(), __values.all_view());
 }
 

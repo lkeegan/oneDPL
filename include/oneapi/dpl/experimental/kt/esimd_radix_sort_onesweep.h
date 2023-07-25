@@ -298,7 +298,7 @@ onesweep(sycl::queue __q, _Range&& __rng, ::std::size_t __n)
 
 template <typename _KernelName, typename KeyT, typename ValueT, typename KeysRange, typename ValuesRange, ::std::uint32_t RADIX_BITS,
           bool IsAscending, ::std::uint32_t PROCESS_SIZE>
-void
+sycl::event
 onesweep_by_key(sycl::queue __q, KeysRange&& __keys, ValuesRange&& __values, ::std::size_t __n)
 {
     using namespace sycl;
@@ -377,9 +377,9 @@ onesweep_by_key(sycl::queue __q, KeysRange&& __keys, ValuesRange&& __values, ::s
         event_chain = __radix_sort_copyback_submitter_by_key<KeyT, _EsimdRadixSortCopyback>()(
             __q, __keys_tmp, __keys, __values_tmp, __values, __n, event_chain);
     }
-    event_chain.wait();
 
     sycl::free(p_tmp_memory, __q);
+    return event_chain;
 }
 
 } // oneapi::dpl::experimental::esimd::impl
