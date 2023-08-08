@@ -319,13 +319,12 @@ __pattern_count(_ExecutionPolicy&& __exec, _Range&& __rng, _Predicate __predicat
         return (__predicate(__acc[__gidx]) ? 1 : 0);
     };
 
-    return oneapi::dpl::__par_backend_hetero::__parallel_transform_reduce<
-               _ReduceValueType, decltype(__identity_reduce_fn), decltype(__identity_transform_fn),
-               ::std::true_type /*is_commutative*/>(::std::forward<_ExecutionPolicy>(__exec), __identity_reduce_fn,
-                                                    __identity_transform_fn,
-                                                    unseq_backend::__no_init_value{}, // no initial value
-                                                    ::std::forward<_Range>(__rng))
-        .get();
+    return oneapi::dpl::__par_backend_hetero::__parallel_transform_reduce_sync<
+        _ReduceValueType, decltype(__identity_reduce_fn), decltype(__identity_transform_fn),
+        ::std::true_type /*is_commutative*/>(::std::forward<_ExecutionPolicy>(__exec), __identity_reduce_fn,
+                                             __identity_transform_fn,
+                                             unseq_backend::__no_init_value{}, // no initial value
+                                             ::std::forward<_Range>(__rng));
 }
 
 //------------------------------------------------------------------------
@@ -564,14 +563,12 @@ __pattern_min_element(_ExecutionPolicy&& __exec, _Range&& __rng, _Compare __comp
         return _ReduceValueType{__gidx, __acc[__gidx]};
     };
 
-    auto __ret_idx =
-        oneapi::dpl::__par_backend_hetero::__parallel_transform_reduce<_ReduceValueType, decltype(__identity_reduce_fn),
-                                                                       decltype(__identity_transform_fn),
-                                                                       ::std::false_type /*is_commutative*/>(
-            ::std::forward<_ExecutionPolicy>(__exec), __identity_reduce_fn, __identity_transform_fn,
-            unseq_backend::__no_init_value{}, // no initial value
-            ::std::forward<_Range>(__rng))
-            .get();
+    auto __ret_idx = oneapi::dpl::__par_backend_hetero::__parallel_transform_reduce_sync<
+        _ReduceValueType, decltype(__identity_reduce_fn), decltype(__identity_transform_fn),
+        ::std::false_type /*is_commutative*/>(::std::forward<_ExecutionPolicy>(__exec), __identity_reduce_fn,
+                                              __identity_transform_fn,
+                                              unseq_backend::__no_init_value{}, // no initial value
+                                              ::std::forward<_Range>(__rng));
 
     using ::std::get;
     return get<0>(__ret_idx);
@@ -622,14 +619,12 @@ __pattern_minmax_element(_ExecutionPolicy&& __exec, _Range&& __rng, _Compare __c
         return _ReduceValueType{__gidx, __gidx, __acc[__gidx], __acc[__gidx]};
     };
 
-    _ReduceValueType __ret =
-        oneapi::dpl::__par_backend_hetero::__parallel_transform_reduce<_ReduceValueType, decltype(__identity_reduce_fn),
-                                                                       decltype(__identity_transform_fn),
-                                                                       ::std::false_type /*is_commutative*/>(
-            ::std::forward<_ExecutionPolicy>(__exec), __identity_reduce_fn, __identity_transform_fn,
-            unseq_backend::__no_init_value{}, // no initial value
-            ::std::forward<_Range>(__rng))
-            .get();
+    _ReduceValueType __ret = oneapi::dpl::__par_backend_hetero::__parallel_transform_reduce_sync<
+        _ReduceValueType, decltype(__identity_reduce_fn), decltype(__identity_transform_fn),
+        ::std::false_type /*is_commutative*/>(::std::forward<_ExecutionPolicy>(__exec), __identity_reduce_fn,
+                                              __identity_transform_fn,
+                                              unseq_backend::__no_init_value{}, // no initial value
+                                              ::std::forward<_Range>(__rng));
 
     using ::std::get;
     return ::std::make_pair(get<0>(__ret), get<1>(__ret));
