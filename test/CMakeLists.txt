@@ -172,7 +172,6 @@ set(_regexp_switch_off_checked_it  "(test/general/header_order_ranges|test/paral
 set(_skip_regex_for_not_std "(std/)")
 file(GLOB_RECURSE UNIT_TESTS "*.pass.cpp")
 foreach (_file IN LISTS UNIT_TESTS)
-
     if (_file MATCHES "${_skip_regex_for_not_std}")
         continue()
     endif()
@@ -193,13 +192,10 @@ foreach (_file IN LISTS UNIT_TESTS)
             onedpl_add_test(${_file} false false)
         endif()
     endif()
-
 endforeach()
 
 file(GLOB_RECURSE UNIT_TESTS "std/*.pass.cpp")
 foreach (_file IN LISTS UNIT_TESTS)
-
         # Do not switch off checked iterators
         onedpl_add_test(${_file} false true)
-
 endforeach()
