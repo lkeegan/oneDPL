@@ -53,7 +53,7 @@ int test_invoke_async_and_wait_on_policy(UniverseContainer u, ResourceFunction&&
 
 
   auto f1 = []()->void {std::cout<<"Running func1\n"; std::this_thread::sleep_for (std::chrono::seconds(10));};
-  auto f2 = []()->void {std::cout<<"Running func2\n"; std::this_thread::sleep_for (std::chrono::milliseconds(1));};
+  auto f2 = []()->void {std::cout<<"Running func2\n"; int randNum = (rand() % 3) + 1; std::this_thread::sleep_for (std::chrono::milliseconds(randNum));};
   std::vector<std::function<void(void)>> func;
   func.push_back(f1);
   for(int i=0;i<5;i++) func.push_back(f2);
@@ -67,15 +67,19 @@ int test_invoke_async_and_wait_on_policy(UniverseContainer u, ResourceFunction&&
                          pass = false;
                        }
                        ecount += i+1;
-                        auto e2 = e.submit([=](sycl::handler& h){
+                        auto e2 = e.submit([=, &sleeper](sycl::handler& h){
                             h.host_task([=](){
-                                sleeper();
+                                if(i==0) std::this_thread::sleep_for (std::chrono::seconds(10));
+                                else std::this_thread::sleep_for (std::chrono::milliseconds(1));
+                                std::cout<<"Host task "<<i<<"\n";
+                                //sleeper();
                                 //func[i]();
                             });
+
                         });
-                       return typename Policy::native_sync_t{};
+                       return e2;
                      });
-      std::this_thread::sleep_for (std::chrono::milliseconds(3));
+      std::this_thread::sleep_for (std::chrono::seconds(1));
   }
   oneapi::dpl::experimental::wait(p);
   int count = ecount.load();

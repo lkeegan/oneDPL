@@ -48,6 +48,8 @@ namespace experimental{
       }
       void report(const oneapi::dpl::experimental::property::task_completion_t&)  const noexcept {
         auto v = resource_ptr_->load_.fetch_sub(1);
+
+        std::cout<<"Subtract"<<std::flush;
       }
       dl_property_handle_t(std::shared_ptr<resource_t> r) : resource_ptr_(r) {}
     };
@@ -117,6 +119,7 @@ namespace experimental{
       int least=0;
       for (auto& r : universe_) {
           load_t v = r->load_.load();
+          std::cout<<v<<"\t";
           if (least_loaded == nullptr || v < least_load) {
             least_load = v;
             least_loaded = r;
@@ -125,6 +128,7 @@ namespace experimental{
           }
           i++;
       }
+      std::cout<<"\n";
       std::cout<<"Selected CPU : "<<least<<"\n";
       return selection_handle_t{dl_property_handle_t{least_loaded}};
     }

@@ -9,7 +9,7 @@
 
 #include <iostream>
 #include "oneapi/dpl/dynamic_selection"
-#include "support/test_dynamic_load_policy_utils.h"
+#include "support/test_ds_utils.h"
 #include "support/inline_scheduler.h"
 
 int main() {
