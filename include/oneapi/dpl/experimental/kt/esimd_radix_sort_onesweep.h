@@ -387,6 +387,12 @@ struct radix_sort_onesweep_slm_reorder_kernel {
 
         LoadKeys(io_offset, keys, default_key);
 
+        for (int i = 0; i < _DataPerWorkItem; ++i)
+        {
+            auto key_val = keys[i];
+            sycl::_V1::ext::oneapi::experimental::printf("Loaded key at(%d) : %u\n", i, key_val);
+        }
+
         bins = utils::__get_bucket<MASK>(utils::__order_preserving_cast<_IsAscending>(keys), stage * _RadixBits);
 
         ResetBinCounters(slm_bin_hist_this_thread);
