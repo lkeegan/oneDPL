@@ -50,15 +50,15 @@ radix_sort(sycl::queue __q, _Range&& __rng, _KernelParam __param)
                 << ", workgroup_size = __workgroup_size";
 
     constexpr ::std::uint32_t __one_wg_cap = __data_per_workitem * __workgroup_size;
-    if (__n <= __one_wg_cap)
-    {
-        std::cout << "__n = " << __n << ", __one_wg_cap = " << __one_wg_cap << " - start one_wg impl " << std::endl;
+    //if (__n <= __one_wg_cap)
+    //{
+    //    std::cout << "__n = " << __n << ", __one_wg_cap = " << __one_wg_cap << " - start one_wg impl " << std::endl;
 
-        // TODO: support different RadixBits values (only 7 or 8 are currently supported), WorkGroupSize
-        return one_wg<_KernelName, _IsAscending, _RadixBits, __data_per_workitem, __workgroup_size>(
-            __q, ::std::forward<_Range>(__rng), __n);
-    }
-    else
+    //    // TODO: support different RadixBits values (only 7 or 8 are currently supported), WorkGroupSize
+    //    return one_wg<_KernelName, _IsAscending, _RadixBits, __data_per_workitem, __workgroup_size>(
+    //        __q, ::std::forward<_Range>(__rng), __n);
+    //}
+    //else
     {
         std::cout << "__n = " << __n << ", __one_wg_cap = " << __one_wg_cap << " - start onesweep impl " << std::endl;
 
