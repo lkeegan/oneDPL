@@ -401,7 +401,7 @@ int main()
             }
             test_small_sizes<TEST_DATA_TYPE, Ascending, RadixBits>(q, kernel_parameters);
 #else
-            for(std::size_t size = 128; size != 129; ++size)
+            for(std::size_t size = 1; size != 6000; ++size)
             {
                 test_usm<TEST_DATA_TYPE, Ascending, RadixBits, sycl::usm::alloc::shared>(q, size, kernel_parameters);
                 test_usm<TEST_DATA_TYPE, Descending, RadixBits, sycl::usm::alloc::shared>(q, size, kernel_parameters);
