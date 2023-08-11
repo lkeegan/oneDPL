@@ -208,8 +208,12 @@ generate_data(T* input, std::size_t size)
     }
     else if constexpr (std::is_integral_v<T>)
     {
-        std::uniform_int_distribution<T> dist(std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
-        std::generate(input, input + unique_threshold, [&]{ return dist(gen); });
+        //std::uniform_int_distribution<T> dist(std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
+        //std::generate(input, input + unique_threshold, [&]{ return dist(gen); });
+        for (std::size_t i = 0; i < size; ++i)
+        {
+            input[i] = size - i - 1;
+        }
     }
     else
     {
