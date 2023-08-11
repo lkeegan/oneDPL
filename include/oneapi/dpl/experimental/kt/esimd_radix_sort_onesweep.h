@@ -390,8 +390,11 @@ struct radix_sort_onesweep_slm_reorder_kernel {
         for (int i = 0; i < _DataPerWorkItem; ++i)
         {
             int key_val = (int)keys[i];
-            key_val = key_val;
-            sycl::_V1::ext::oneapi::experimental::printf("Loaded key at(%d) : %d\n", i, key_val);
+            if (key_val != 0 && key_val != 65535)
+            {
+                key_val = key_val;
+                sycl::_V1::ext::oneapi::experimental::printf("Loaded key at(%d) : %d\n", i, key_val);
+            }
         }
 
         bins = utils::__get_bucket<MASK>(utils::__order_preserving_cast<_IsAscending>(keys), stage * _RadixBits);
