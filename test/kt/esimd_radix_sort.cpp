@@ -38,9 +38,9 @@
 #include <cmath>
 #include <limits>
 
-#ifndef LOG_TEST_INFO
-#define LOG_TEST_INFO 0
-#endif
+//#ifndef LOG_TEST_INFO
+#define LOG_TEST_INFO 1
+//#endif
 
 template <typename T, bool Order>
 struct Compare : public std::less<T> {};
