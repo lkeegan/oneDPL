@@ -212,8 +212,7 @@ generate_data(T* input, std::size_t size)
         //std::generate(input, input + unique_threshold, [&]{ return dist(gen); });
         for (std::size_t i = 0; i < size; ++i)
         {
-            //input[i] = size - i - 1;
-            input[i] = i;
+            input[i] = size - i - 1;
         }
     }
     else
