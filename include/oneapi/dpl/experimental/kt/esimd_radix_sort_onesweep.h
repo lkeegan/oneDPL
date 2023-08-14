@@ -603,13 +603,13 @@ onesweep(sycl::queue __q, _Range&& __rng, ::std::size_t __n)
     const size_t full_buffer_size_output = __n * sizeof(_KeyT);
     const size_t full_buffer_size = full_buffer_size_global_hist + full_buffer_size_output;
 
-    uint8_t* p_temp_memory = sycl::malloc_device<uint8_t>(full_buffer_size, __q);
+    utils::__container_t<uint8_t> p_temp_memory(sycl::malloc_device<uint8_t>(full_buffer_size, __q));
 
-    uint8_t* p_globl_hist_buffer = p_temp_memory;
+    uint8_t* p_globl_hist_buffer = p_temp_memory.get();
     auto p_global_offset = reinterpret_cast<uint32_t*>(p_globl_hist_buffer);
 
     // Memory for storing values sorted for an iteration
-    auto p_output = reinterpret_cast<_KeyT*>(p_temp_memory + full_buffer_size_global_hist);
+    auto p_output = reinterpret_cast<_KeyT*>(p_temp_memory.get() + full_buffer_size_global_hist);
     auto __keep = oneapi::dpl::__ranges::__get_sycl_range<oneapi::dpl::__par_backend_hetero::access_mode::read_write, decltype(p_output)>();
     auto __out_rng = __keep(p_output, p_output + __n).all_view();
 
@@ -646,8 +646,6 @@ onesweep(sycl::queue __q, _Range&& __rng, ::std::size_t __n)
 
     // TODO: required to remove this wait
     event_chain.wait();
-
-    sycl::free(p_temp_memory, __q);
 
     return event_chain;
 }
