@@ -154,6 +154,8 @@ if (ONEDPL_BACKEND MATCHES "^(tbb|dpcpp|dpcpp_only)$")
     if (ONEDPL_BACKEND MATCHES "^(tbb|dpcpp)$")
         find_package(TBB 2021 REQUIRED tbb OPTIONAL_COMPONENTS tbbmalloc)
         message(STATUS "oneDPL uses oneTBB ${TBB_VERSION}")
+        # temporary fix for macos:
+        find_package(Threads REQUIRED)
         target_link_libraries(oneDPL INTERFACE TBB::tbb)
     endif()
 
