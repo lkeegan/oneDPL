@@ -158,7 +158,7 @@ if (ONEDPL_BACKEND MATCHES "^(tbb|dpcpp|dpcpp_only)$")
     endif()
 
     # It is for Clang and Intel® oneAPI DPC++ Compiler (while the last one is detected as Clang; for Linux only), which are used with libstdc++ standard library
-    if (UNIX)
+    if (UNIX AND NOT APPLE)
         if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
             if (FIND_GXX_EXE)
                 string(REPLACE "\n" "" _onedpl_tbb_use_glibcxx_version ${_onedpl_gxx_version})
